@@ -50,6 +50,31 @@ class Net_deeper(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
+class Net_deeper2(nn.Module):
+    def __init__(self):
+        super(Net_deeper2, self).__init__()
+        self.conv1 = nn.Conv2d(1, 20, 5, 1)
+        self.conv2 = nn.Conv2d(20, 50, 5, 1)
+        self.fc1 = nn.Linear(4 * 4 * 50, 500)
+        self.fc3 = nn.Linear(500, 500)
+        self.fc4 = nn.Linear(500, 1000)
+        self.fc5 = nn.Linear(1000, 500)
+        self.fc2 = nn.Linear(500, 10)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.max_pool2d(x, 2, 2)
+        x = F.relu(self.conv2(x))
+        x = F.max_pool2d(x, 2, 2)
+        x = x.view(-1, 4 * 4 * 50)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc3(x))
+        x = F.relu(self.fc4(x))
+        x = F.relu(self.fc5(x))
+        x = self.fc2(x)
+        return F.log_softmax(x, dim=1)
+
+
 def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
@@ -136,6 +161,8 @@ def main():
         model = Net().to(device)
     elif args.model_type==1:
         model = Net_deeper().to(device)
+    elif args.model_type==2:
+        model = Net_deeper2().to(device)
     print("num_parameters={}".format(utils.compute_num_parameters(model)))
 
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
