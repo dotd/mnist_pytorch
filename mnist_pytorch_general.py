@@ -7,6 +7,7 @@ import torch.optim as optim
 from torchvision import datasets, transforms
 import time
 import numpy as np
+import utils
 
 
 class Net(nn.Module):
@@ -24,6 +25,27 @@ class Net(nn.Module):
         x = F.max_pool2d(x, 2, 2)
         x = x.view(-1, 4 * 4 * 50)
         x = F.relu(self.fc1(x))
+        x = self.fc2(x)
+        return F.log_softmax(x, dim=1)
+
+
+class Net_deeper(nn.Module):
+    def __init__(self):
+        super(Net_deeper, self).__init__()
+        self.conv1 = nn.Conv2d(1, 20, 5, 1)
+        self.conv2 = nn.Conv2d(20, 50, 5, 1)
+        self.fc1 = nn.Linear(4 * 4 * 50, 500)
+        self.fc3 = nn.Linear(500, 500)
+        self.fc2 = nn.Linear(500, 10)
+
+    def forward(self, x):
+        x = F.relu(self.conv1(x))
+        x = F.max_pool2d(x, 2, 2)
+        x = F.relu(self.conv2(x))
+        x = F.max_pool2d(x, 2, 2)
+        x = x.view(-1, 4 * 4 * 50)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc3(x))
         x = self.fc2(x)
         return F.log_softmax(x, dim=1)
 
@@ -65,6 +87,8 @@ def test(args, model, device, test_loader):
 def main():
     # Training settings
     parser = argparse.ArgumentParser(description='PyTorch MNIST Example')
+    parser.add_argument('--model-type', type=int, default=0, metavar='N',
+                        help='model type number (default: 0)')
     parser.add_argument('--batch-size', type=int, default=64, metavar='N',
                         help='input batch size for training (default: 64)')
     parser.add_argument('--test-batch-size', type=int, default=1000, metavar='N',
@@ -107,7 +131,13 @@ def main():
         ])),
         batch_size=args.test_batch_size, shuffle=True, **kwargs)
 
-    model = Net().to(device)
+    model = None
+    if args.model_type==0:
+        model = Net().to(device)
+    elif args.model_type==1:
+        model = Net_deeper().to(device)
+    print("num_parameters={}".format(utils.compute_num_parameters(model)))
+
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
 
     times = []
@@ -117,8 +147,10 @@ def main():
         test(args, model, device, test_loader)
         delta = time.time() - start
         times.append(delta)
+        print("delta={}".format(delta))
 
-    if (args.save_model):
+
+    if args.save_model:
         torch.save(model.state_dict(), "mnist_cnn.pt")
     print("times={}".format(times))
     print("average={}".format(np.mean(times)))
